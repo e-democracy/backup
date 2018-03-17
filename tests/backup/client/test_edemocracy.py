@@ -3,7 +3,8 @@ import requests_mock
 import unittest
 
 from backup.client.edemocracy import EDemocracyClient, \
-    EDemocracyClientException
+    EDemocracyClientException, \
+    EDemocracyLoginException
 
 
 @requests_mock.Mocker()
@@ -157,3 +158,50 @@ class EDemocracyClientTestCase(unittest.TestCase):
 
         with self.assertRaises(EDemocracyClientException):
             self.client.get_message_months_of_group('hub')
+
+    ########################################
+    # Log In
+    ########################################
+
+    def test_login_success(self, mr):
+        mr.post('http://forums.e-democracy.org/login.html',
+                status_code=302,
+                cookies={'__ac': 'session'},
+                headers={'location': '/'})
+
+        try:
+            self.client.login('foo', 'bar')
+        except EDemocracyLoginException:
+            self.fail('Test Login Failed')
+
+    def test_login_failure(self, mr):
+        mr.post('http://forums.e-democracy.org/login.html',
+                status_code=200)
+
+        with self.assertRaises(EDemocracyLoginException):
+            self.client.login('foo', 'bar')
+
+    def test_login_error(self, mr):
+        mr.post('http://forums.e-democracy.org/login.html',
+                status_code=500)
+
+        with self.assertRaises(EDemocracyClientException):
+            self.client.login('foo', 'bar')
+
+    def test_whoami_logged_in(self, mr):
+        mr.head('http://forums.e-democracy.org/p/', status_code=302,
+                headers={'location': '/p/username'})
+
+        self.assertEqual(self.client.whoami(), 'username')
+
+    def test_whoami_logged_out(self, mr):
+        mr.head('http://forums.e-democracy.org/p/', status_code=302,
+                headers={'location': '/login.html?came_from=/p'})
+
+        self.assertEqual(self.client.whoami(), None)
+
+    def test_whoami_error(self, mr):
+        mr.head('http://forums.e-democracy.org/p/', status_code=500)
+
+        with self.assertRaises(EDemocracyClientException):
+            self.client.whoami()
