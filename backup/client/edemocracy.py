@@ -13,6 +13,10 @@ class EDemocracyClientException(Exception):
     pass
 
 
+class EDemocracyLoginException(Exception):
+    pass
+
+
 class EDemocracyClient:
 
     def __init__(self, client=None):
@@ -38,14 +42,37 @@ class EDemocracyClient:
 
     def login(self, username, password):
         logger.info("Logging In")
-        self.session.post('%s/login.html' % BASE_URL, {
+        response = self.session.post('%s/login.html' % BASE_URL, {
             'login': username,
             'password': password
-        })
+        }, allow_redirects=False)
+
+        if response.status_code not in [302, 200]:
+            raise EDemocracyClientException(
+                'Error encountered logging into E-Democracy')
+
+        if response.status_code != 302 or '__ac' not in response.cookies:
+            raise EDemocracyLoginException('Login to E-Democracy unsuccessful')
+
+        logger.info("Log In Successful")
 
     def logout(self):
         logger.info("Logging Out")
         self.session.get('%s/logout.html' % BASE_URL)
+
+    def whoami(self):
+        """
+        :returns: Username of the logged in user, or None if not logged in.
+        """
+        profile = self.session.head('%s/p/' % BASE_URL)
+        if profile.status_code != 302:
+            raise EDemocracyClientException(
+                'Problem retrieving logged in username from E-Democracy')
+
+        if profile.headers['location'].startswith('/p/'):
+            return profile.headers['location'][3:]
+        else:
+            return None
 
     def get_groups(self):
         """Fetches the list of currently available groups from the E-Democracy
