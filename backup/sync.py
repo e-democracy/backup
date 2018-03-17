@@ -62,7 +62,6 @@ class Sync:
         })
 
 
-
 class Threaded:
     # Notes on multithreaded steps:
     # - item lists act as a work queue for syncing;

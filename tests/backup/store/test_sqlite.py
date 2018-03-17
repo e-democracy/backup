@@ -239,14 +239,28 @@ class SQLiteStoreTestCase(unittest.TestCase):
         saved_message_ids = [r[0] for r in cursor.fetchall()]
         self.assertCountEqual(expected_message_ids, saved_message_ids)
 
-    def test_create_message_of_group_no_overwrite(self):
+    def test_create_messages_of_group_no_overwrite(self):
         # Initial state: Message 0 of Group A exists.
-        self.populate_mock_messages('groupA', 'message0')
+        self.populate_mock_messages('groupA',
+                                    {
+                                        'id': 'message0',
+                                        'body': 'Stuff'
+                                    })
 
-        # Assert that creating message 0 of group A causes an error.
-        with self.store as store, \
-                self.assertRaises(sqlite3.IntegrityError):
-            store.create_group_messages('groupA', 'message0')
+        # Assert that creating messages 0 and 1 leaves message 0 untouched and
+        # message 1 is created
+        with self.store as store:
+            store.create_group_messages('groupA', ['message0', 'message1'])
+
+        cursor = self.db.cursor()
+        cursor.execute('''
+            SELECT id, body from group_messages WHERE group_id = 'groupA'
+        ''')
+        saved_message = cursor.fetchone()
+        self.assertEqual('message0', saved_message[0])
+        self.assertEqual('Stuff', saved_message[1])
+        saved_message = cursor.fetchone()
+        self.assertEqual('message1', saved_message[0])
 
     def test_update_message_of_group(self):
         # Initial state: Message 0 of Group A exists.

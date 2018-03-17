@@ -133,7 +133,12 @@ class Store:
                 INSERT into group_messages ({}) values({})
             '''.format(columns, placeholders)
 
-            cursor.execute(sql, tuple(message.values()))
+            try:
+                cursor.execute(sql, tuple(message.values()))
+            except sqlite3.IntegrityError as e:
+                if str(e) == 'UNIQUE constraint failed: group_messages.id':
+                    continue
+                raise e
 
         try:
             self.db.commit()
