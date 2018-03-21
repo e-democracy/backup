@@ -1,3 +1,4 @@
+import json
 import logging
 import logging.config
 import os.path
@@ -140,16 +141,29 @@ def sync_empty_messages():
             master_client.logout()
 
 
+def print_group_member_email_addresses():
+    group = input('Group ID: ')
+    output_file = input('Output File: ')
+    with Store(DB_PATH) as store, open(output_file, 'w') as f:
+        members = store.fetch_members_of_group(group)
+        profiles = [store.fetch_profile_of_member(member) for member in
+                    members]
+        emails = [profile['email'][0] for profile in filter(None, profiles)]
+        json.dump(emails, f)
+
+
 if __name__ == '__main__':
     print("Commands")
     print("\t 1: Sync the memberships of groups and profiles of members")
     print("\t 2: Sync message IDs across all groups for a specific month")
     print("\t 3: Sync messages IDs across all groups for all time")
     print("\t 4: Sync messages in the DB that do not currently have a body")
+    print("\t 5: Export email addresses of member of a group to a file")
     command = input('Command: ')
     {
         '1': sync_group_members_and_profiles,
         '2': sync_message_ids_for_month,
         '3': sync_message_ids_for_all_months,
-        '4': sync_empty_messages
+        '4': sync_empty_messages,
+        '5': print_group_member_email_addresses
     }[command]()
