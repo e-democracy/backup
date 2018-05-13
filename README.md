@@ -41,6 +41,16 @@ virtualenv backup
 pip install -r requirements.txt
 ```
 
+# Configuration
+
+## Script
+
+Copy `config/script.conf.example` to `config/script.conf` and edit as needed.
+
+## Logging
+
+Copy `config/logging.conf.example` to `config/logging.conf` and edit as needed.
+
 # Database
 
 ## Run Migrations
@@ -55,11 +65,19 @@ On the prod DB: `yoyo apply --database sqlite:///db/prod.sqlite`
 yoyo new -m "purpose of migration"
 ```
 
+# Test It
+
+```
+nosetests
+```
+
 # Run It
 
 ```
-python script.py
+EDEM_ENV=production python script.py
 ```
+
+If the `EDEM_ENV` environment variable is not specified, `test` will be used as the environment.
 
 You will be prompted to select a command to run:
 
@@ -68,9 +86,3 @@ You will be prompted to select a command to run:
 * 3 - Download all message IDs for all messages ever posted. This uses group information from command 1.
 * 4 - Download the mblox bodies of any saved message ID that does not currently have a saved body. This command uses information from commands 2 or 3.
       This command can be interrupted; subsequent runs of this command will continue on from where previous runs left off.
-
-# Configuration
-
-## Logging
-
-Copy `config/logging.conf.example` to `config/logging.conf` and edit as needed.

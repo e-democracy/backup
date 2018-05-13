@@ -1,17 +1,15 @@
+from tests import config
 import json
 import sqlite3
 import unittest
-
 from backup.store.sqlite import Store
-
-TEST_DB = 'db/test.sqlite'
 
 
 class SQLiteStoreTestCase(unittest.TestCase):
 
     def setUp(self):
-        self.db = sqlite3.connect(TEST_DB)
-        self.store = Store(TEST_DB)
+        self.db = sqlite3.connect(config['DatabasePath'])
+        self.store = Store(config['DatabasePath'])
 
     def tearDown(self):
         self.clearDatabase()

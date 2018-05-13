@@ -1,0 +1,5 @@
+[test]
+DatabasePath = db/test.sqlite
+
+[production]
+DatabasePath = db/production.sqlite

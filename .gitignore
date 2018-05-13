@@ -1,4 +1,4 @@
 *.pyc
-config/logging.conf
+config/*.conf
 db/*.sqlite
 db/*.sqlite-journal

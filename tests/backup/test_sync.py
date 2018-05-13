@@ -1,11 +1,9 @@
+from tests import config
 from mock import call, patch, Mock, NonCallableMock
 import unittest
 
 from backup.client.edemocracy import EDemocracyClient
 from backup.sync import Sync, Threaded
-
-
-TEST_DB = 'db/test.sqlite'
 
 
 class SyncTestCase(unittest.TestCase):
@@ -94,7 +92,7 @@ class ThreadedTestCase(unittest.TestCase):
 
         # Create and call the threaded function
         threaded = Threaded(func, [i for i in range(10)],
-                            master_client, TEST_DB)
+                            master_client, config['DatabasePath'])
         threaded()
 
         # Assert that the provided function was called with a Store

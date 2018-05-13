@@ -30,6 +30,7 @@ jobs:
           name: run tests
           command: |
             . venv/bin/activate
+            cp config/script.conf.example config/script.conf
             yoyo apply
             nosetests
       - store_artifacts:
