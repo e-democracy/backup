@@ -46,7 +46,7 @@ pip install -r requirements.txt
 ## Script
 
 Copy `example.env` to `.env` and edit as needed. The first word of each
-variable in `.env` specifies the environment that variable applies to.
+variable name in `.env` specifies the environment that variable applies to.
 
 ## Logging
 
@@ -75,10 +75,10 @@ nosetests
 # Run It
 
 ```
-EDEM_ENV=production python script.py
+EDEM_BACKUP_ENV=production python script.py
 ```
 
-If the `EDEM_ENV` environment variable is not specified, `test` will be used as the environment.
+If the `EDEM_BACKUP_ENV` environment variable is not specified, `test` will be used as the environment.
 
 You will be prompted to select a command to run:
 

@@ -6,6 +6,8 @@ from os import getcwd, getenv, path
 @unique
 class ConfigKey(Enum):
     DATABASE_PATH = 'DATABASE_PATH'
+    USERNAME = 'USERNAME'
+    PASSWORD = 'PASSWORD'
 
 
 def get_edem_env_name(config_enum):

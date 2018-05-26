@@ -3,7 +3,7 @@ import logging
 import logging.config
 import os.path
 import time
-from backup import config
+from backup import config, ConfigKey
 from backup.client.edemocracy import EDemocracyClient
 from backup.store.sqlite import Store
 from backup.sync import Sync, Threaded
@@ -13,19 +13,29 @@ LOG_CONFIG_PATH = 'config/logging.conf'
 if os.path.isfile(LOG_CONFIG_PATH):
     logging.config.fileConfig(LOG_CONFIG_PATH)
 logger = logging.getLogger('backup')
+logger.info("Using Database at %s" % config[ConfigKey.DATABASE_PATH])
 
 
-def get_username_password():
+def prompt_username_password():
     username = input('Username: ')
     password = input('Password: ')
     return (username, password)
+
+
+def get_username_password():
+    if not (config[ConfigKey.USERNAME] and config[ConfigKey.PASSWORD]):
+        username, password = prompt_username_password()
+        config[ConfigKey.USERNAME] = username
+        config[ConfigKey.PASSWORD] = password
+
+    return (config[ConfigKey.USERNAME], config[ConfigKey.PASSWORD])
 
 
 def sync_group_members_and_profiles():
     (username, password) = get_username_password()
 
     with EDemocracyClient() as master_client, \
-            Store(config['DatabasePath']) as master_store:
+            Store(config[ConfigKey.DATABASE_PATH]) as master_store:
         try:
             # Login to the site; worker clients will use the same server
             # session
@@ -39,7 +49,7 @@ def sync_group_members_and_profiles():
             # Multithreaded sync of group membership
             logger.info("%i groups to sync membership of" % len(groups))
             Threaded(Sync.group_members, groups, master_client,
-                     config['DatabasePath'])()
+                     config[ConfigKey.DatabasePath])()
             logger.info("Group membership syncing complete")
 
             # List of all members to get profiles for
@@ -48,7 +58,7 @@ def sync_group_members_and_profiles():
             logger.info("%i member profiles to sync" % len(members))
             # Multithreaded sync of member profiles
             Threaded(Sync.member_profile, members, master_client,
-                     config['DatabasePath'])()
+                     config[ConfigKey.DatabasePath])()
             logger.info("Member Profile syncing complete")
         finally:
             master_client.logout()
@@ -59,7 +69,7 @@ def sync_message_ids_for_month():
     month = input('Month (YYYYMM): ')
 
     with EDemocracyClient() as master_client, \
-            Store(config['DatabasePath']) as master_store:
+            Store(config[ConfigKey.DATABASE_PATH]) as master_store:
         try:
             # Login to the site; worker clients will use the same server
             # session
@@ -72,7 +82,7 @@ def sync_message_ids_for_month():
             # Multithreaded sync of message IDs
             logger.info("%i groups to message IDs for" % len(groups))
             Threaded(Sync.message_ids_of_group_and_month, args,
-                     master_client, config['DatabasePath'])()
+                     master_client, config[ConfigKey.DATABASE_PATH])()
             logger.info("Group message ID syncing complete")
         finally:
             master_client.logout()
@@ -91,7 +101,7 @@ def sync_message_ids_for_all_months():
     (username, password) = get_username_password()
 
     with EDemocracyClient() as master_client, \
-            Store(config['DatabasePath']) as master_store:
+            Store(config[ConfigKey.DATABASE_PATH]) as master_store:
         try:
             # Login to the site; worker clients will use the same server
             # session
@@ -115,7 +125,7 @@ def sync_message_ids_for_all_months():
             logger.info("%i groups X months to get message IDs for" %
                         len(args))
             Threaded(Sync.message_ids_of_group_and_month, args,
-                     master_client, config['DatabasePath'])()
+                     master_client, config[ConfigKey.DATABASE_PATH])()
             logger.info("Group message ID syncing complete")
         finally:
             master_client.logout()
@@ -125,7 +135,7 @@ def sync_empty_messages():
     (username, password) = get_username_password()
 
     with EDemocracyClient() as master_client, \
-            Store(config['DatabasePath']) as master_store:
+            Store(config[ConfigKey.DATABASE_PATH]) as master_store:
         try:
             # Login to the site; worker clients will use the same server
             # session
@@ -137,7 +147,7 @@ def sync_empty_messages():
             # Multithreaded sync of message IDs
             logger.info("%i message bodies to sync" % len(messages))
             Threaded(Sync.message, messages, master_client,
-                     config['DatabasePath'])()
+                     config[ConfigKey.DATABASE_PATH])()
             logger.info("Message syncing complete")
         finally:
             master_client.logout()
@@ -146,7 +156,7 @@ def sync_empty_messages():
 def print_group_member_email_addresses():
     group = input('Group ID: ')
     output_file = input('Output File: ')
-    with Store(config['DatabasePath']) as store,\
+    with Store(config[ConfigKey.DATABASE_PATH]) as store,\
             open(output_file, 'w') as f:
         members = store.fetch_members_of_group(group)
         profiles = [store.fetch_profile_of_member(member) for member in
