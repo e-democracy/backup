@@ -31,8 +31,8 @@ mkvirtualenv --python=/usr/bin/python3 backup
 
 ```
 git clone git@github.com:e-democracy/backup.git
-cd backup 
-virtualenv backup 
+cd backup
+virtualenv backup
 ```
 
 ## Python Dependencies
@@ -45,7 +45,8 @@ pip install -r requirements.txt
 
 ## Script
 
-Copy `config/script.conf.example` to `config/script.conf` and edit as needed.
+Copy `example.env` to `.env` and edit as needed. The first word of each
+variable in `.env` specifies the environment that variable applies to.
 
 ## Logging
 

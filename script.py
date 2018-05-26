@@ -155,6 +155,10 @@ def print_group_member_email_addresses():
         json.dump(emails, f)
 
 
+def print_settings():
+    print(config)
+
+
 if __name__ == '__main__':
     print("Commands")
     print("\t 1: Sync the memberships of groups and profiles of members")
@@ -162,11 +166,13 @@ if __name__ == '__main__':
     print("\t 3: Sync messages IDs across all groups for all time")
     print("\t 4: Sync messages in the DB that do not currently have a body")
     print("\t 5: Export email addresses of member of a group to a file")
+    print("\t 6: Print Settings")
     command = input('Command: ')
     {
         '1': sync_group_members_and_profiles,
         '2': sync_message_ids_for_month,
         '3': sync_message_ids_for_all_months,
         '4': sync_empty_messages,
-        '5': print_group_member_email_addresses
+        '5': print_group_member_email_addresses,
+        '6': print_settings
     }[command]()

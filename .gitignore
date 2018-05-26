@@ -2,3 +2,4 @@
 config/*.conf
 db/*.sqlite
 db/*.sqlite-journal
+.env
