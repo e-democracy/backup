@@ -1,4 +1,4 @@
-from backup import config, ConfigKey
+from backup.config import Config, ConfigKey
 from mock import call, patch, Mock, NonCallableMock
 import unittest
 
@@ -92,7 +92,7 @@ class ThreadedTestCase(unittest.TestCase):
 
         # Create and call the threaded function
         threaded = Threaded(func, [i for i in range(10)],
-                            master_client, config[ConfigKey.DATABASE_PATH])
+                            master_client, Config.get(ConfigKey.DATABASE_PATH))
         threaded()
 
         # Assert that the provided function was called with a Store

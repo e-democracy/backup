@@ -1,4 +1,4 @@
-from backup import config, ConfigKey
+from backup.config import Config, ConfigKey
 import json
 import sqlite3
 import unittest
@@ -8,10 +8,8 @@ from backup.store.sqlite import Store
 class SQLiteStoreTestCase(unittest.TestCase):
 
     def setUp(self):
-        print(ConfigKey.DATABASE_PATH)
-        print(config)
-        self.db = sqlite3.connect(config[ConfigKey.DATABASE_PATH])
-        self.store = Store(config[ConfigKey.DATABASE_PATH])
+        self.db = sqlite3.connect(Config.get(ConfigKey.DATABASE_PATH))
+        self.store = Store(Config.get(ConfigKey.DATABASE_PATH))
 
     def tearDown(self):
         self.clearDatabase()
