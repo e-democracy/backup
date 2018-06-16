@@ -39,6 +39,7 @@ class Config:
 
 @unique
 class ConfigKey(Enum):
+    COMMAND = 'COMMAND'
     DATABASE_PATH = 'DATABASE_PATH'
     USERNAME = 'USERNAME'
     PASSWORD = 'PASSWORD'

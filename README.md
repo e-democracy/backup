@@ -48,6 +48,8 @@ pip install -r requirements.txt
 Copy `example.env` to `.env` and edit as needed. The first word of each
 variable name in `.env` specifies the environment that variable applies to.
 
+Optionally, you may specify the same environment variables in your shell.
+
 ## Logging
 
 Copy `config/logging.conf.example` to `config/logging.conf` and edit as needed.

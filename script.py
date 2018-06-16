@@ -1,3 +1,4 @@
+import datetime
 import json
 import logging
 import logging.config
@@ -15,6 +16,14 @@ if os.path.isfile(LOG_CONFIG_PATH):
 logger = logging.getLogger('backup')
 DB_PATH = Config.get(ConfigKey.DATABASE_PATH)
 logger.info("Using Database at %s" % DB_PATH)
+
+
+def get_command():
+    if not (Config.get(ConfigKey.COMMAND)):
+        command = input('Command: ')
+        Config.set(ConfigKey.COMMAND, command)
+
+    return Config.get(ConfigKey.COMMAND)
 
 
 def prompt_username_password():
@@ -63,9 +72,9 @@ def sync_group_members_and_profiles():
             master_client.logout()
 
 
-def sync_message_ids_for_month():
+def sync_message_ids_for_month(month):
     (username, password) = get_username_password()
-    month = input('Month (YYYYMM): ')
+    logger.info("Getting ids for month %s" % month)
 
     with EDemocracyClient() as master_client, \
             Store(DB_PATH) as master_store:
@@ -85,6 +94,20 @@ def sync_message_ids_for_month():
             logger.info("Group message ID syncing complete")
         finally:
             master_client.logout()
+
+
+def sync_message_ids_for_current_months():
+    now = datetime.datetime.now()
+    if now.day < 8:
+        previous_month = now - datetime.timedelta(days=8)
+        sync_message_ids_for_month(previous_month.strftime("%Y%m"))
+
+    sync_message_ids_for_month(now.strftime("%Y%m"))
+
+
+def prompt_and_sync_message_ids_for_month():
+    month = input('Month (YYYYMM): ')
+    sync_message_ids_for_month(month)
 
 
 def sync_message_ids_for_all_months():
@@ -170,17 +193,18 @@ def print_settings():
 if __name__ == '__main__':
     print("Commands")
     print("\t 1: Sync the memberships of groups and profiles of members")
-    print("\t 2: Sync message IDs across all groups for a specific month")
-    print("\t 3: Sync messages IDs across all groups for all time")
-    print("\t 4: Sync messages in the DB that do not currently have a body")
-    print("\t 5: Export email addresses of member of a group to a file")
-    print("\t 6: Print Settings")
-    command = input('Command: ')
+    print("\t 2: Sync message IDs across all groups for a the current month")
+    print("\t 3: Sync message IDs across all groups for a specific month")
+    print("\t 4: Sync messages IDs across all groups for all time")
+    print("\t 5: Sync messages in the DB that do not currently have a body")
+    print("\t 6: Export email addresses of member of a group to a file")
+    print("\t 7: Print Settings")
     {
         '1': sync_group_members_and_profiles,
-        '2': sync_message_ids_for_month,
-        '3': sync_message_ids_for_all_months,
-        '4': sync_empty_messages,
-        '5': print_group_member_email_addresses,
-        '6': print_settings
-    }[command]()
+        '2': sync_message_ids_for_current_months,
+        '3': prompt_and_sync_message_ids_for_month,
+        '4': sync_message_ids_for_all_months,
+        '5': sync_empty_messages,
+        '6': print_group_member_email_addresses,
+        '7': print_settings
+    }[get_command()]()
