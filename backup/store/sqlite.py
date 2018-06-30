@@ -1,10 +1,12 @@
 import json
 import sqlite3
+from backup.utils.email_message_utility import EmailMessageUtility
 
 
 class Store:
     def __init__(self, db_file):
         self.db_file = db_file
+        self.email_message_utils = EmailMessageUtility()
 
     def __enter__(self):
         self.db = sqlite3.connect(self.db_file)
@@ -108,9 +110,9 @@ class Store:
 
         Any individual 'message' can be a dict or a string. If a 'message' is a
         dict, the 'id' and 'body' attributes will be used to create the message
-        id and body. If a 'message' is a string, then that string will be used
-        as a message_id and no body will be saved. In both cases, all writes
-        will take place in a single database transaction.
+        id, from_address, and body. If a 'message' is a string, then that
+        string will be used as a message_id and no body will be saved. In both
+        cases, all writes will take place in a single database transaction.
 
         :param group_id: ID of the group to save messages for
         :param messages: The message or messages to save
@@ -126,6 +128,10 @@ class Store:
                 'body': None
             }
             message['group_id'] = group_id
+            if message['body'] is not None:
+                message['from_address'] = self\
+                                          .email_message_utils\
+                                          .get_sender_address(message['body'])
 
             columns = ', '.join(message.keys())
             placeholders = ', '.join('?' * len(message))
@@ -157,6 +163,7 @@ class Store:
 
         Messages must be a dict. The 'id' attribute will be used to find the
         message, and any other specified attributes will be updated.
+        from_address will be derived from 'body'.
 
         :param messages: The message or messages to update
         """
@@ -170,6 +177,8 @@ class Store:
                 raise TypeError("Message must be a dict")
             message = message.copy()
             message_id = message.pop('id')
+            message['from_address'] = self.email_message_utils\
+                                          .get_sender_address(message['body'])
             sets = ','.join(["%s = ?" % c for c in message.keys()])
             sql = '''
                 UPDATE group_messages
@@ -196,7 +205,7 @@ class Store:
         cursor.execute('''
         SELECT id, group_id
         FROM group_messages
-        WHERE body IS NULL
+        WHERE from_address IS NULL
         ''')
         return [{'message_id': m[0], 'group_id': m[1]} for m in cursor]
 
