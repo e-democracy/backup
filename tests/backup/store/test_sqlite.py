@@ -3,6 +3,7 @@ import json
 import sqlite3
 import unittest
 from backup.store.sqlite import Store
+from backup.utils.email_message_utility import EmailMessageUtility
 
 
 class SQLiteStoreTestCase(unittest.TestCase):
@@ -10,6 +11,7 @@ class SQLiteStoreTestCase(unittest.TestCase):
     def setUp(self):
         self.db = sqlite3.connect(Config.get(ConfigKey.DATABASE_PATH))
         self.store = Store(Config.get(ConfigKey.DATABASE_PATH))
+        self.emu = EmailMessageUtility()
 
     def tearDown(self):
         self.clearDatabase()
@@ -56,13 +58,23 @@ class SQLiteStoreTestCase(unittest.TestCase):
         cursor = self.db.cursor()
         for message in messages:
             if type(message) is not dict:
-                message = {'id': message, 'body': None}
-            cursor.execute('INSERT into group_messages values (?, ?, ?)',
-                           (message['id'], group_id, message['body']))
+                message = {'id': message, 'from_address': None, 'body': None}
+            if message['body'] is not None:
+                message['from_address'] = self.emu.get_sender_address(
+                                            message['body'])
+            message['group_id'] = group_id
+            columns = ', '.join(message.keys())
+            placeholders = ', '.join('?' * len(message))
+            sql = '''
+                INSERT into group_messages ({}) values({})
+            '''.format(columns, placeholders)
+
+            cursor.execute(sql, tuple(message.values()))
+
         self.db.commit()
 
     ########################################
-    # Group Membership
+    # Groups
     ########################################
 
     def test_fetch_all_groups(self):
@@ -207,7 +219,7 @@ class SQLiteStoreTestCase(unittest.TestCase):
         # Save message 0 of groupA.
         expected_message = {
             'id': 'message0',
-            'body': 'Foo'
+            'body': "From: FooBar <foo@bar.com>\n\nFoo"
         }
         with self.store as store:
             store.create_group_messages('groupA', expected_message)
@@ -215,11 +227,13 @@ class SQLiteStoreTestCase(unittest.TestCase):
         # Assert that groupA has message id 0 with body.
         cursor = self.db.cursor()
         cursor.execute('''
-            SELECT id, body from group_messages WHERE group_id = 'groupA'
+            SELECT id, from_address, body from group_messages
+                WHERE group_id = 'groupA'
         ''')
         saved_message = cursor.fetchone()
         self.assertEqual(expected_message['id'], saved_message[0])
-        self.assertEqual(expected_message['body'], saved_message[1])
+        self.assertEqual('foo@bar.com', saved_message[1])
+        self.assertEqual(expected_message['body'], saved_message[2])
 
     def test_create_group_messages_multiple_ids(self):
         # Initial state: No message IDs.
@@ -239,10 +253,11 @@ class SQLiteStoreTestCase(unittest.TestCase):
 
     def test_create_messages_of_group_no_overwrite(self):
         # Initial state: Message 0 of Group A exists.
+        mock_body = "From: Sender <some@thing.com>\n\nStuff"
         self.populate_mock_messages('groupA',
                                     {
                                         'id': 'message0',
-                                        'body': 'Stuff'
+                                        'body': mock_body
                                     })
 
         # Assert that creating messages 0 and 1 leaves message 0 untouched and
@@ -252,11 +267,13 @@ class SQLiteStoreTestCase(unittest.TestCase):
 
         cursor = self.db.cursor()
         cursor.execute('''
-            SELECT id, body from group_messages WHERE group_id = 'groupA'
+            SELECT id, from_address, body from group_messages
+            WHERE group_id = 'groupA'
         ''')
         saved_message = cursor.fetchone()
         self.assertEqual('message0', saved_message[0])
-        self.assertEqual('Stuff', saved_message[1])
+        self.assertEqual('some@thing.com', saved_message[1])
+        self.assertEqual(mock_body, saved_message[2])
         saved_message = cursor.fetchone()
         self.assertEqual('message1', saved_message[0])
 
@@ -265,7 +282,7 @@ class SQLiteStoreTestCase(unittest.TestCase):
         self.populate_mock_messages('groupA', 'message0')
 
         # Update message 0 of group A
-        mock_body = 'Mock'
+        mock_body = "From: Sender <sender@domain.com>\n\nMock"
         with self.store as store:
             store.update_group_messages({
                 'id': 'message0',
@@ -275,13 +292,14 @@ class SQLiteStoreTestCase(unittest.TestCase):
         # Assert that message 0 of group A was updated.
         cursor = self.db.cursor()
         cursor.execute('''
-            SELECT id, group_id, body from group_messages
+            SELECT id, group_id, from_address, body from group_messages
             WHERE id = 'message0'
         ''')
         saved_message = cursor.fetchone()
         self.assertEqual('message0', saved_message[0])
         self.assertEqual('groupA', saved_message[1])
-        self.assertEqual(mock_body, saved_message[2])
+        self.assertEqual('sender@domain.com', saved_message[2])
+        self.assertEqual(mock_body, saved_message[3])
 
     def test_update_messages_of_group(self):
         # Initial state: Message 0 and 1 of Group A exists.
@@ -291,11 +309,11 @@ class SQLiteStoreTestCase(unittest.TestCase):
         message_updates = [
             {
                 'id': 'message0',
-                'body': 'foo'
+                'body': "From: Zero <sender@zero.com>\n\nfoo"
             },
             {
                 'id': 'message1',
-                'body': 'bar'
+                'body': "From: Zero <sender@one.com>\n\nbar"
             }
         ]
         with self.store as store:
@@ -305,7 +323,7 @@ class SQLiteStoreTestCase(unittest.TestCase):
         # not.
         cursor = self.db.cursor()
         cursor.execute('''
-            SELECT id, group_id, body from group_messages
+            SELECT id, group_id, from_address, body from group_messages
             WHERE id in ('message0', 'message1')
             ORDER BY id ASC
         ''')
@@ -314,18 +332,20 @@ class SQLiteStoreTestCase(unittest.TestCase):
                               [m[0] for m in saved_messages])
         for saved_message in saved_messages:
             self.assertEqual('groupA', saved_message[1])
-        self.assertCountEqual([m['body'] for m in message_updates],
+        self.assertCountEqual(['sender@zero.com', 'sender@one.com'],
                               [m[2] for m in saved_messages])
+        self.assertCountEqual([m['body'] for m in message_updates],
+                              [m[3] for m in saved_messages])
 
     def test_fetch_empty_group_messages(self):
         # Initial state: Message 0 and 1 exist and are empty, message 2 exists
-        # and has a body.
+        # and has a from_address and body.
         self.populate_mock_messages('group_id', [
             'message0',
             'message1',
             {
                 'id': 'message2',
-                'body': 'Something!'
+                'body': "From: Existance <anExistant@sender.com>\n\nSomething!"
             }
         ])
 
